@@ -1,21 +1,26 @@
 import streamlit as st
-from openai import OpenAI
+import os
+from groq import Groq
 
-st.title("My First AI App 🤖")
+# Set up Groq client (no key needed in code)
+client = Groq()
 
-key = st.text_input("OpenAI API Key", type="password")
-question = st.text_input("Ask me anything")
+st.title("My First AI App 😎")
+
+# Text input
+user_input = st.text_input("Ask me anything:")
 
 if st.button("Get Answer"):
-    if key and question:
+    if user_input:
         try:
-            client = OpenAI(api_key=key)
+            # Call Groq API
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": question}]
+                model="llama3-8b-8192",  # Free model
+                messages=[{"role": "user", "content": user_input}]
             )
-            st.write(response.choices[0].message.content)
+            answer = response.choices[0].message.content
+            st.write(answer)
         except Exception as e:
             st.error(f"Error: {e}")
     else:
-        st.warning("Enter both key and question")
+        st.warning("Type something first!")
