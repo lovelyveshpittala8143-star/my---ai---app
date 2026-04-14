@@ -1,21 +1,18 @@
 import streamlit as st
-import os
 from groq import Groq
-
-# Set up Groq client (no key needed in code)
-client = Groq()
 
 st.title("My First AI App 😎")
 
-# Text input
+# Get key from Streamlit Secrets
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
 user_input = st.text_input("Ask me anything:")
 
 if st.button("Get Answer"):
     if user_input:
         try:
-            # Call Groq API
             response = client.chat.completions.create(
-                model="llama3-8b-8192",  # Free model
+                model="llama3-8b-8192",
                 messages=[{"role": "user", "content": user_input}]
             )
             answer = response.choices[0].message.content
