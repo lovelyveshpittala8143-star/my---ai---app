@@ -1,4 +1,4 @@
 streamlit
 groq
-streamlit-mic-recorder
+streamlit-mic-recorder==0.0.7
 SpeechRecognition
