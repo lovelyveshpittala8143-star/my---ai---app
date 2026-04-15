@@ -18,8 +18,7 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-name, authentication_status, username = authenticator.login('Login', 'main')
-
+name, authentication_status, username = authenticator.login(location='main')
 if authentication_status != True or username != "lovelyvesh":
     st.error("Admin access only. GTFO 😂")
     st.stop()
