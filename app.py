@@ -203,3 +203,164 @@ if prompt := st.chat_input("Ask anything..."):
     # Save history
     with open(history_file, 'w') as f:
         json.dump(st.session_state.messages, f, indent=2)
+<!DOCTYPE html>
+<html lang="te">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LovelyVesh AI - Telugu</title>
+  <meta name="theme-color" content="#111827">
+  <link rel="manifest" href="data:application/json,{%22name%22:%22LovelyVesh%20AI%22,%22short_name%22:%22LovelyVesh%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23111827%22,%22theme_color%22:%22%23111827%22}">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui; background: #111827; color: #fff; height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 16px; text-align: center; border-bottom: 1px solid #374151; }
+    #chat { flex: 1; overflow-y: auto; padding: 16px; }
+  .msg { margin: 8px 0; padding: 12px; border-radius: 12px; max-width: 85%; position: relative; }
+  .user { background: #2563eb; margin-left: auto; }
+  .bot { background: #374151; }
+  .speak-btn { position: absolute; bottom: 4px; right: 4px; background: none; border: none; font-size: 16px; cursor: pointer; }
+    #input-area { display: flex; padding: 16px; gap: 8px; border-top: 1px solid #374151; align-items: center; }
+    #prompt { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #1f2937; color: #fff; }
+   .icon-btn { padding: 12px; border: none; border-radius: 8px; background: #374151; color: #fff; font-size: 18px; cursor: pointer; }
+    #send { background: #2563eb; font-weight: bold; }
+    #status { text-align: center; padding: 8px; font-size: 12px; color: #9ca3af; }
+  .recording { background: #dc2626!important; animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <header><h1>LovelyVesh AI 💬</h1><small>తెలుగులో మాట్లాడండి</small></header>
+  <div id="status">AI లోడ్ అవుతోంది... మొదటిసారి 1-2 నిమిషాలు పడుతుంది</div>
+  <div id="chat"></div>
+  <div id="input-area">
+    <button id="mic" class="icon-btn" title="తెలుగులో మాట్లాడండి">🎤</button>
+    <input id="prompt" placeholder="ఇక్కడ టైప్ చేయండి లేదా మైక్ నొక్కండి..." disabled>
+    <button id="send" class="icon-btn" disabled>➤</button>
+  </div>
+
+  <script type="module">
+    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+
+    const chat = document.getElementById("chat");
+    const promptEl = document.getElementById("prompt");
+    const sendBtn = document.getElementById("send");
+    const micBtn = document.getElementById("mic");
+    const status = document.getElementById("status");
+
+    const SYSTEM_PROMPT = `You are LovelyVesh AI created by LovelyVesh.
+CRITICAL RULE: You must ALWAYS reply in Telugu language only, using Telugu script.
+Never use English words. Never mention Meta, Llama, WebLLM.
+If asked who made you, say 'నన్ను లవ్లీవేష్ తయారు చేశారు'.`;
+
+    let engine;
+    let messages = [{ role: "system", content: SYSTEM_PROMPT }];
+    let recognition;
+    let synth = window.speechSynthesis;
+
+    // 1. Setup Telugu Speech-to-Text
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'te-IN'; // Telugu India
+      recognition.continuous = false;
+
+      recognition.onstart = () => micBtn.classList.add('recording');
+      recognition.onend = () => micBtn.classList.remove('recording');
+      recognition.onresult = (e) => {
+        promptEl.value = e.results[0][0].transcript;
+      };
+      recognition.onerror = () => {
+        status.textContent = "మైక్ ఎర్రర్. మళ్లీ ప్రయత్నించండి";
+        micBtn.classList.remove('recording');
+      };
+    } else {
+      micBtn.style.display = 'none';
+    }
+
+    micBtn.onclick = () => recognition?.start();
+
+    // 2. Telugu Text-to-Speech
+    function speak(text) {
+      synth.cancel(); // Stop previous speech
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'te-IN';
+      // Find Telugu voice if available
+      const voices = synth.getVoices();
+      utter.voice = voices.find(v => v.lang === 'te-IN') || voices.find(v => v.lang.startsWith('te'));
+      synth.speak(utter);
+    }
+
+    // 3. Load AI Model
+    async function init() {
+      try {
+        engine = await CreateMLCEngine("Llama-3.2-1B-Instruct-q4f16_1-MLC", {
+          initProgressCallback: (p) => {
+            status.textContent = `లోడ్ అవుతోంది: ${Math.round(p.progress * 100)}%`;
+          }
+        });
+        status.textContent = "సిద్ధంగా ఉంది! మాట్లాడండి లేదా టైప్ చేయండి";
+        promptEl.disabled = false;
+        sendBtn.disabled = false;
+        synth.getVoices(); // Load voices
+      } catch (e) {
+        status.textContent = "ఎర్రర్: ఈ ఫోన్ సపోర్ట్ చేయదు. 6GB+ RAM అవసరం";
+      }
+    }
+
+    function addMsg(text, who) {
+      const div = document.createElement("div");
+      div.className = `msg ${who}`;
+      div.textContent = text;
+
+      if (who === 'bot') {
+        const btn = document.createElement("button");
+        btn.className = 'speak-btn';
+        btn.innerHTML = '🔊';
+        btn.onclick = () => speak(text);
+        div.appendChild(btn);
+      }
+
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
+    }
+
+    async function sendMessage() {
+      const text = promptEl.value.trim();
+      if (!text) return;
+
+      addMsg(text, "user");
+      messages.push({ role: "user", content: text });
+      promptEl.value = "";
+      sendBtn.disabled = true;
+      status.textContent = "ఆలోచిస్తోంది...";
+
+      const replyDiv = addMsg("", "bot");
+      let reply = "";
+
+      const stream = await engine.chat.completions.create({
+        messages: messages,
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || "";
+        reply += delta;
+        replyDiv.childNodes[0].textContent = reply; // Update text before button
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      messages.push({ role: "assistant", content: reply });
+      sendBtn.disabled = false;
+      status.textContent = "సిద్ధంగా ఉంది!";
+      speak(reply); // Auto-speak reply
+    }
+
+    sendBtn.onclick = sendMessage;
+    promptEl.onkeydown = (e) => { if (e.key === "Enter") sendMessage(); };
+
+    init();
+  </script>
+</body>
+</html>
