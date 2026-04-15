@@ -115,7 +115,7 @@ authenticator.logout('Logout', 'sidebar')
 
 st.sidebar.title(f'Welcome *{name}*')
 st.sidebar.markdown("---")
-st.sidebar.markdown("                              
+                              
 
                             
 st.sidebar.markdown("### Built by lovelyvesh 👑")
