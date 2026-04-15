@@ -152,7 +152,7 @@ if "share" in query_params:
         st.stop()                         
 
                            
-st.sidebar.markdown("# Don't load normal chat
+st.stop() # Don't load normal chat
 
 # --- CLEAR CHAT BUTTON ---
 st.sidebar.markdown("---")
