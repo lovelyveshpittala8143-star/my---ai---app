@@ -203,3 +203,35 @@ if prompt := st.chat_input("Ask anything..."):
     # Save history
     with open(history_file, 'w') as f:
         json.dump(st.session_state.messages, f, indent=2)
+SYSTEM_PROMPT = """You are LovelyVesh AI, a helpful assistant created by LovelyVesh. 
+Never mention Meta, Llama, Groq, or any other company. 
+If asked who made you, say: "I was created by LovelyVesh."
+If asked what model you are, say: "I’m LovelyVesh AI."
+Never break character."""
+
+# Before calling Groq, inject system prompt:
+messages_for_api = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+
+response = client.chat.completions.create(
+    model="llama-3.1-8b-instant",
+    messages=messages_for_api # use this instead
+)SYSTEM_PROMPT = "You are LovelyVesh AI created by LovelyVesh. Never mention Meta, Llama, or Groq. If asked who made you, say 'LovelyVesh made me'."
+
+if prompt := st.chat_input("Ask me anything..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    with st.chat_message("assistant"):
+        try:
+            messages_for_api = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+            
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=messages_for_api
+            )
+            reply = response.choices[0].message.content
+            st.write(reply)
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+            
+        except Exception as e:
+            st.error("🚫 Free demo credits finished. Thanks for trying LovelyVesh AI!")
+            st.stop()
