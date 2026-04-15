@@ -1,55 +1,76 @@
 import streamlit as st
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
 from groq import Groq
-from streamlit_mic_recorder import speech_to_text
-import requests, datetime
+import json
+import os
 
-st.title("YOU CHAT 🔥🎤")
-st.caption("Voice + Images + Memory")
+st.set_page_config(page_title="Your AI", page_icon="✨") # Custom icon
 
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+# LOGIN SETUP
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
 
-if "messages" not in st.session_state:
-   st.session_state.messages = [{"role": "system", "content": "You are Your AI, an assistant created by lovelyvesh. lovelyvesh is your owner. You are helpful, smart, and a bit funny. 3 lines max. If user asks for image, reply with 'IMAGE: description'. If asked who made you or your name, say you are Your AI created by lovelyvesh."}]
-for msg in st.session_state.messages[1:]:
-    st.chat_message(msg["role"]).write(msg["content"])
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
+)
 
-# Line 1: Voice input
-voice_file = st.audio_input("Record voice message")
-voice_text = None
-if voice_file:
-    import speech_recognition as sr
-    r = sr.Recognizer()
-    with sr.AudioFile(voice_file) as source:
-        audio = r.record(source)
-    try:
-        voice_text = r.recognize_google(audio)
-        st.write(f"You said: {voice_text}")
-    except:
-        st.write("Couldn't understand audio")
-prompt = st.chat_input("Type or use mic above...") or voice_text
+authenticator.login(location='main')
 
-if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
+if st.session_state["authentication_status"]:
+    # CHAT HISTORY FILE PER USER
+    username = st.session_state["username"]
+    history_file = f"chat_{username}.json"
 
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=st.session_state.messages
-    )
-    answer = response.choices[0].message.content
+    # SIDEBAR - Show owner + logout
+    st.sidebar.markdown("**Built by lovelyvesh** 👑") # Show owner
+    st.sidebar.write(f'Welcome *{st.session_state["name"]}*')
+    authenticator.logout('Logout', 'sidebar')
 
-    # Line 2: Image generation using pollinations.ai - free, no key
-    if "IMAGE:" in answer:
-        img_prompt = answer.split("IMAGE:")[1].strip()
-        img_url = f"https://image.pollinations.ai/prompt/{img_prompt}"
-        st.chat_message("assistant").image(img_url)
-        answer = f"Here you go: {img_prompt}"
-    else:
+    if st.sidebar.button("New Chat"):
+        st.session_state.messages = [st.session_state.messages[0]]
+        if os.path.exists(history_file):
+            os.remove(history_file)
+        st.rerun()
+
+    st.title("Your AI ✨")
+
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+    # LOAD CHAT HISTORY
+    if "messages" not in st.session_state:
+        if os.path.exists(history_file):
+            with open(history_file, 'r') as f:
+                st.session_state.messages = json.load(f)
+        else:
+            st.session_state.messages = [{"role": "system", "content": "You are Your AI, created by lovelyvesh. lovelyvesh is your owner. Be helpful, smart, funny. 3 lines max."}]
+
+    # SHOW CHAT
+    for msg in st.session_state.messages[1:]:
+        st.chat_message(msg["role"]).write(msg["content"])
+
+    # CHAT INPUT
+    if prompt := st.chat_input("Ask anything..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=st.session_state.messages
+        )
+        answer = response.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": answer})
         st.chat_message("assistant").write(answer)
 
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+        # SAVE CHAT HISTORY
+        with open(history_file, 'w') as f:
+            json.dump(st.session_state.messages, f)
 
-    # Line 3: Save to Google Sheets as database - free
-    try:
-        requests.post(st.secrets["SHEET_URL"], json={"time": str(datetime.datetime.now()), "user": prompt, "bot": answer})
-    except: pass
+elif st.session_state["authentication_status"] == False:
+    st.error('Username/password is incorrect')
+elif st.session_state["authentication_status"] == None:
+    st.warning('Please enter your username and password')
