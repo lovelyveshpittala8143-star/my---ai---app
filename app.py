@@ -3,7 +3,7 @@ from groq import Groq
 from streamlit_mic_recorder import speech_to_text
 import requests, datetime
 
-st.title("YOUR AI 🔥🎤")
+st.title("YOU CHAT 🔥🎤")
 st.caption("Voice + Images + Memory")
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
