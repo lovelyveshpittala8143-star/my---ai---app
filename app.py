@@ -3,6 +3,7 @@ from groq import Groq
 from streamlit_mic_recorder import mic_recorder
 from gtts import gTTS
 import os
+import base64
 
 # --- 1. PAGE CONFIG ---
 st.set_page_config(
@@ -80,7 +81,8 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
         if msg["role"] == "assistant" and "audio" in msg:
-            st.audio(msg["audio"], format="audio/mp3")
+            audio_bytes = base64.b64decode(msg["audio"])
+            st.audio(audio_bytes, format="audio/mp3")
 
 # --- 7. INPUT: VOICE + TEXT ---
 st.write("---")
@@ -145,7 +147,7 @@ if prompt:
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": reply,
-                    "audio": audio_bytes
+                    "audio": base64.b64encode(audio_bytes).decode()
                 })
 
                 st.session_state[lifetime_key] += 1
