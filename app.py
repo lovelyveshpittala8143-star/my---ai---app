@@ -59,7 +59,7 @@ if st.session_state["authentication_status"]:
         st.chat_message("user").write(prompt)
 
         response = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             messages=st.session_state.messages
         )
         answer = response.choices[0].message.content
