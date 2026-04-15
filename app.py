@@ -127,7 +127,10 @@ if prompt:
     with st.chat_message("assistant"):
         with st.spinner("LovelyVesh AI ఆలోచిస్తోంది..."):
             try:
-                messages_for_api = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+                # FIX: Remove 'audio' key before sending to Groq
+                clean_history = [{"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages]
+                messages_for_api = [{"role": "system", "content": SYSTEM_PROMPT}] + clean_history
+
                 response = client.chat.completions.create(
                     model="llama-3.1-8b-instant",
                     messages=messages_for_api,
