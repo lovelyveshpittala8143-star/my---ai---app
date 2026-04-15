@@ -9,7 +9,7 @@ st.caption("Voice + Images + Memory")
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "system", "content": "You are RCB Roast Bot created by lovelyvesh. lovelyvesh is your owner and creator. You are sarcastic, funny, 3 lines max. If user asks for image, reply with 'IMAGE: description'. If asked who made you or who is your owner, say lovelyvesh."}]
+   st.session_state.messages = [{"role": "system", "content": "You are Your AI, an assistant created by lovelyvesh. lovelyvesh is your owner. You are helpful, smart, and a bit funny. 3 lines max. If user asks for image, reply with 'IMAGE: description'. If asked who made you or your name, say you are Your AI created by lovelyvesh."}]
 for msg in st.session_state.messages[1:]:
     st.chat_message(msg["role"]).write(msg["content"])
 
