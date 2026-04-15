@@ -3,11 +3,11 @@ credentials:
     lovelyvesh:
       email: lovelyvesh@gmail.com
       name: lovelyvesh
-      password: $2b$12$Kixx4Gq9iZ0H6j1aB7w1W.M6Y8sYc6Z6Y7Q1vXz5J3g7Q6g7Q6g7Q # this = "admin123"
+      password: $2b$12$Kixx4Gq9iZ0H6j1aB7w1W.M6Y8sYc6Z6Y7Q1vXz5J3g7Q6g7Q
     guest:
       email: guest@gmail.com
       name: Guest User
-      password: $2b$12$Kixx4Gq9iZ0H6j1aB7w1W.M6Y8sYc6Z6Y7Q1vXz5J3g7Q6g7Q6g7Q # this = "admin123"
+      password: $2b$12$Kixx4Gq9iZ0H6j1aB7w1W.M6Y8sYc6Z6Y7Q1vXz5J3g7Q6g7Q
 cookie:
   expiry_days: 30
   key: some_signature_key
