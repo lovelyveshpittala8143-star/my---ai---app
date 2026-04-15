@@ -14,7 +14,18 @@ for msg in st.session_state.messages[1:]:
     st.chat_message(msg["role"]).write(msg["content"])
 
 # Line 1: Voice input
-voice_text = speech_to_text(language='en', just_once=True, key='STT')
+voice_file = st.audio_input("Record voice message")
+voice_text = None
+if voice_file:
+    import speech_recognition as sr
+    r = sr.Recognizer()
+    with sr.AudioFile(voice_file) as source:
+        audio = r.record(source)
+    try:
+        voice_text = r.recognize_google(audio)
+        st.write(f"You said: {voice_text}")
+    except:
+        st.write("Couldn't understand audio")
 prompt = st.chat_input("Type or use mic above...") or voice_text
 
 if prompt:
