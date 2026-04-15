@@ -9,13 +9,17 @@ from datetime import datetime
 import time
 import uuid
 import streamlit.components.v1 as components
-
-# --- GOOGLE OAUTH SETUP ---
 import requests
-import base64
-import json
 import urllib.parse
 
+# --- PAGE CONFIG ---
+st.set_page_config(
+    page_title="LovelyVesh AI",
+    page_icon="✨",
+    layout="wide"
+)
+
+# --- GOOGLE OAUTH FUNCTIONS ---
 def get_google_auth_url(client_id, redirect_uri):
     scope = "openid email profile"
     auth_url = f"https://accounts.google.com/o/oauth2/auth?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope={scope}&access_type=offline&prompt=consent"
@@ -39,104 +43,77 @@ def get_user_info(access_token):
     response = requests.get(user_info_url, headers=headers)
     return response.json()
 
-# --- PAGE CONFIG ---
-st.set_page_config(
-    page_title="LovelyVesh AI",
-    page_icon="✨",
-    layout="wide"
-)
-
 # --- LOAD CONFIG ---
+if not os.path.exists('config.yaml'):
+    with open('config.yaml', 'w') as f:
+        yaml.dump({'credentials': {'usernames': {}}, 'cookie': {'name': 'lovelyvesh_auth', 'key': 'abcdef', 'expiry_days': 30}}, f)
+
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
-# --- CHECK IF LOGGED IN ---
+# --- GOOGLE LOGIN FLOW ---
 if "google_user" not in st.session_state:
     st.session_state.google_user = None
 
-# --- GOOGLE LOGIN FLOW ---
 query_params = st.query_params
 client_id = st.secrets["GOOGLE_CLIENT_ID"]
 client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
-redirect_uri = f"https://{st.secrets['STREAMLIT_DEPLOYMENT_URL']}"
+app_url = st.secrets.get("STREAMLIT_DEPLOYMENT_URL", "your-app-name.streamlit.app")
+redirect_uri = f"https://{app_url}"
 
 if "code" in query_params and not st.session_state.google_user:
-    # Exchange code for token
     code = query_params["code"]
     token_data = exchange_code_for_token(code, client_id, client_secret, redirect_uri)
     if "access_token" in token_data:
         access_token = token_data["access_token"]
-        # Get user info
         user_info = get_user_info(access_token)
-        st.session_state.google_user = google_user = user_info.get("email", user_info.get("name", "Guest"))
-        # Save to config.yaml
-        with open('config.yaml', 'r+') as file:
-            data = yaml.load(file, Loader=SafeLoader)
-            if 'credentials' not in data:
-                data['credentials'] = {'usernames': {}}
-            data['credentials']['usernames'][google_user] = {
-                'email': user_info.get('email'),
-                'name': user_info.get('name'),
-                'picture': user_info.get('picture')
-            }
-            file.seek(0)
-            yaml.dump(data, file)
-            file.truncate()
-        # Reload config
-        with open('config.yaml') as file:
-            config = yaml.load(file, Loader=SafeLoader)
+        st.session_state.google_user = user_info.get("email", "Guest")
+        st.session_state.user_name = user_info.get("name", "User")
+        st.query_params.clear()
+        st.rerun()
 
 # --- LOGIN UI ---
 if not st.session_state.google_user:
-    col1, col2 = st.columns([1,1])
-    with col1:
-        st.write("")
+    st.title("✨ LovelyVesh AI")
+    st.subheader("Sign in to continue")
+    
+    col1, col2, col3 = st.columns([1,2,1])
     with col2:
         auth_url = get_google_auth_url(client_id, redirect_uri)
-        components.html(
-            f"""
-            <a href="{auth_url}">
-                <img src="https://www.google.com/favicon.ico" width="16"> Sign in with Google
-            </a>
-            """,
-            height=50
-        )
+        st.link_button("🔐 Sign in with Google", auth_url, use_container_width=True)
     st.stop()
 
 # --- LOGGED IN ---
 name = st.session_state.google_user
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
-authenticator.logout('Logout', 'sidebar')
+display_name = st.session_state.get("user_name", name)
 
-st.sidebar.title(f'Welcome *{name}*')
+# --- LOGOUT ---
+if st.sidebar.button("Logout"):
+    st.session_state.google_user = None
+    st.session_state.user_name = None
+    st.rerun()
+
+st.sidebar.title(f'Welcome *{display_name}*')
 st.sidebar.markdown("---")
-                              
-
-                            
 st.sidebar.markdown("### Built by lovelyvesh 👑")
 
 # --- SHARE CHAT FEATURE ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔗 Share Chat")
 if st.sidebar.button("Generate Share Link"):
-    share_id = str(uuid.uuid4())[:8]
-    share_file = f"shared_chats/{share_id}.json"
-    os.makedirs("shared_chats", exist_ok=True)
-    with open(share_file, 'w') as f:
-        json.dump(st.session_state.messages, f, indent=2)
-    st.sidebar.success(f"Share ID: `{share_id}`")
-    st.sidebar.code(f"?share={share_id}", language="text")
-    st.sidebar.caption("Send this ID to friends. They add?share=ID to URL")
+    if "messages" in st.session_state and st.session_state.messages:
+        share_id = str(uuid.uuid4())[:8]
+        share_file = f"shared_chats/{share_id}.json"
+        os.makedirs("shared_chats", exist_ok=True)
+        with open(share_file, 'w') as f:
+            json.dump(st.session_state.messages, f, indent=2)
+        st.sidebar.success(f"Share ID: `{share_id}`")
+        st.sidebar.code(f"{redirect_uri}/?share={share_id}", language="text")
+        st.sidebar.caption("Send this link to friends")
+    else:
+        st.sidebar.warning("No messages to share yet!")
 
-                                       
-query_params = st.query_params
 # Check if someone opened a shared link
-query_params = st.query_params
 if "share" in query_params:
     share_id = query_params["share"]
     share_file = f"shared_chats/{share_id}.json"
@@ -149,24 +126,19 @@ if "share" in query_params:
                 st.markdown(msg["content"])
                 if "timestamp" in msg:
                     st.caption(msg["timestamp"])
-        st.stop()                         
-
-                           
-st.stop() # Don't load normal chat
+        st.stop() # Don't load normal chat
 
 # --- CLEAR CHAT BUTTON ---
 st.sidebar.markdown("---")
 if st.sidebar.button("🗑️ Clear Chat History"):
     history_file = f"chat_history/{name}_history.json"
-    if os.exists(history_file):
+    if os.path.exists(history_file):
         os.remove(history_file)
     st.session_state.messages = []
     st.rerun()
 
-                          
-if name == "# --- ADMIN PANEL LINK ---
-if name == "lovelyvesh":                    
-    st.sidebar.markdown("# Only you see this
+# --- ADMIN PANEL LINK ---
+if name == "lovelyvesh" or "lovelyvesh" in name: # Only you see this
     st.sidebar.markdown("---")
     st.sidebar.page_link("pages/2_🔐_Admin.py", label="Admin Panel", icon="🔐")
 
@@ -174,8 +146,7 @@ st.title("✨ LovelyVesh AI")
 
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-                                      
-history_file = f"# --- CHAT HISTORY WITH TIMESTAMPS ---
+# --- CHAT HISTORY WITH TIMESTAMPS ---
 history_file = f"chat_history/{name}_history.json"
 os.makedirs("chat_history", exist_ok=True)
 
@@ -186,20 +157,16 @@ if "messages" not in st.session_state:
     else:
         st.session_state.messages = []
 
-                      
-for message in st.session_state.messages:
-    with st.chat_message(message["# Display chat history
+# Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-                                   
-        if "# --- TIMESTAMP FEATURE ---
+        # --- TIMESTAMP FEATURE ---
         if "timestamp" in message:
             st.caption(f"*{message['timestamp']}*")
 
 if prompt := st.chat_input("Ask anything..."):
-                                       
-    timestamp = datetime.now().strftime("# --- ADD TIMESTAMP TO USER MSG ---
+    # --- ADD TIMESTAMP TO USER MSG ---
     timestamp = datetime.now().strftime("%I:%M %p | %b %d")
     st.session_state.messages.append({
         "role": "user",
@@ -212,12 +179,9 @@ if prompt := st.chat_input("Ask anything..."):
         st.caption(f"*{timestamp}*")
 
     with st.chat_message("assistant"):
-                                  
-        with st.status("# --- TYPING ANIMATION ---
+        # --- TYPING ANIMATION ---
         with st.status("Your AI is thinking...", expanded=False) as status:
-            time.sleep(0.5)                           
-            response = client.chat.completions.create(
-                model="# Fake thinking for effect
+            time.sleep(0.5)
             response = client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
@@ -225,11 +189,17 @@ if prompt := st.chat_input("Ask anything..."):
             status.update(label="Done!", state="complete", expanded=False)
 
         msg_response = response.choices[0].message.content
-                                         
-        ai_timestamp = datetime.now().strftime("# --- ADD TIMESTAMP TO AI MSG ---
+        # --- ADD TIMESTAMP TO AI MSG ---
         ai_timestamp = datetime.now().strftime("%I:%M %p | %b %d")
         st.markdown(msg_response)
         st.caption(f"*{ai_timestamp}*")
 
         st.session_state.messages.append({
-            "role
+            "role": "assistant",
+            "content": msg_response,
+            "timestamp": ai_timestamp
+        })
+
+    # Save history
+    with open(history_file, 'w') as f:
+        json.dump(st.session_state.messages, f, indent=2)
