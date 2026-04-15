@@ -135,7 +135,7 @@ if st.sidebar.button("Generate Share Link"):
 
                                        
 query_params = st.query_params
-if "# Check if someone opened a shared link
+# Check if someone opened a shared link
 query_params = st.query_params
 if "share" in query_params:
     share_id = query_params["share"]
