@@ -2,3 +2,7 @@ streamlit
 groq
 streamlit-mic-recorder==0.0.7
 SpeechRecognition
+streamlit
+groq
+streamlit-authenticator
+PyYAML
